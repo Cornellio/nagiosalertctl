@@ -1,0 +1,126 @@
+#!/bin/bash
+#
+# Nagios service controller (Pete Cornell, 2017)
+#
+# Script to disable/enable host service checks and notifications in Nagios via curl
+#
+# - When enabling checks the nagios command types issued are: 15 and 24
+# - When disabling checks the nagios command types issued are: 16 and 25
+#
+# command type ref: https://www.icinga.com/docs/icinga1/latest/en/cgiparams.html#cgiparams-statustypes
+
+
+progname="$(basename $0)"
+progconfig="$progname.cfg"
+
+# Source the config file
+source $progconfig || {echo "Cannot load $progconfig"; exit 1;}
+
+
+parse_args () {
+
+  while getopts 'p:u:vf:' OPTION; do
+    case $OPTION in
+      u) username=$OPTARG;;
+      p) pw=$OPTARG;;
+      v) verbosity=1;;
+      f) hosts_file=$OPTARG;;
+      h) echo_usage ;;
+      ?) echo_usage ;;
+    esac
+  done
+
+  shift $((OPTIND-1))
+
+  # Set numeric command types used by Nagios
+  nagios_cmd="${1:-undef}"
+  if [ $nagios_cmd == "enable" ] ; then
+    nagios_cmd_types="15 24"
+  elif [ $nagios_cmd == "disable" ] ; then
+    nagios_cmd_types="16 25"
+  else
+    echo_usage
+  fi
+
+  # Display help message if required args not given
+  if [ -z $username -a -z $hosts_file -a -z $nagios_cmd ] ; then
+    echo_usage
+  fi
+
+  if [ -z $pw ] ; then
+    get_password
+  fi
+
+}
+
+
+echo_usage () {
+
+  cat <<-EOM
+
+$progname - Control Nagios checks and notifications.
+
+Usage:
+  ${progname} [options] COMMAND
+
+  Where COMMAND is either enable or disable
+
+Examples:
+  ${progname} -u pcornell -p password -f hostlist disable
+    Supplying your password on the command line is insecure.
+
+  ${progname} -u pcornell -f hostlist disable
+    Omit the password to be prompted for it instead
+
+Options:
+  -u	Nagios username.
+  -p	Nagios password. Leave blank to be prompted for password (more secure.)
+  -v	verbose output.
+  -f	file with list of hosts to act on.
+
+EOM
+exit 0
+}
+
+
+execute () {
+
+  local curl_cmd="/usr/bin/curl -d"
+  local credentials="${username}:${pw}"
+  local nagios_cmd_base="cmd_mod=2&btnSubmit=Commit"
+
+  # Send commands to Nagios for each host given
+  for target_host in $host_list; do
+    for nagios_cmd_type in $nagios_cmd_types; do
+      local nagios_cmd="${nagios_cmd_base}&host=${target_host}&cmd_typ=${nagios_cmd_type}"
+      ${curl_cmd} ${nagios_cmd} ${nagios_host}/${cmd_url} -u ${credentials}
+    done
+  done
+
+}
+
+
+get_password () {
+
+  # Prompt for user password with character echo
+  prompt="Nagios password: "
+  while IFS= read -p "$prompt" -r -s -n 1 char; do
+      if [[ $char == $'\0' ]]; then
+          break
+      fi
+      prompt='*'
+      pw+="$char"
+  done
+  echo
+
+}
+
+
+main () {
+  parse_args $*
+  host_list=$(cat $hosts_file | tr '\n' ' ')
+  execute $*
+}
+
+
+main $*
