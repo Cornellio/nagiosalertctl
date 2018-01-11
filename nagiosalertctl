@@ -14,7 +14,24 @@ progname="$(basename $0)"
 progconfig="$progname.cfg"
 
 # Source the config file
-source $progconfig || {echo "Cannot load $progconfig"; exit 1;}
+source $progconfig || { echo "Cannot load $progconfig"; exit 1; }
+
+
+do_nagios_request () {
+
+  local curl_cmd="/usr/bin/curl -d"
+  local credentials="${username}:${pw}"
+  local nagios_cmd_base="cmd_mod=2&btnSubmit=Commit"
+
+  # Send commands to Nagios for each host given
+  for target_host in $host_list; do
+    for nagios_cmd_type in $nagios_cmd_types; do
+      local nagios_cmd="${nagios_cmd_base}&host=${target_host}&cmd_typ=${nagios_cmd_type}"
+      ${curl_cmd} ${nagios_cmd} ${nagios_host}/${cmd_url} -u ${credentials}
+    done
+  done
+
+}
 
 
 parse_args () {
@@ -83,23 +100,6 @@ exit 0
 }
 
 
-execute () {
-
-  local curl_cmd="/usr/bin/curl -d"
-  local credentials="${username}:${pw}"
-  local nagios_cmd_base="cmd_mod=2&btnSubmit=Commit"
-
-  # Send commands to Nagios for each host given
-  for target_host in $host_list; do
-    for nagios_cmd_type in $nagios_cmd_types; do
-      local nagios_cmd="${nagios_cmd_base}&host=${target_host}&cmd_typ=${nagios_cmd_type}"
-      ${curl_cmd} ${nagios_cmd} ${nagios_host}/${cmd_url} -u ${credentials}
-    done
-  done
-
-}
-
-
 get_password () {
 
   # Prompt for user password with character echo
@@ -119,7 +119,7 @@ get_password () {
 main () {
   parse_args $*
   host_list=$(cat $hosts_file | tr '\n' ' ')
-  execute $*
+  do_nagios_request $*
 }
 
 
