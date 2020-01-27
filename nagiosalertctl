@@ -9,13 +9,11 @@
 #
 # command type ref: https://www.icinga.com/docs/icinga1/latest/en/cgiparams.html#cgiparams-statustypes
 
-
 progname="$(basename $0)"
 progconfig="$progname.cfg"
 
 # Source the config file
 source $progconfig || { echo "Cannot load $progconfig"; exit 1; }
-
 
 do_nagios_request () {
 
@@ -32,7 +30,6 @@ do_nagios_request () {
   done
 
 }
-
 
 parse_args () {
 
@@ -70,7 +67,6 @@ parse_args () {
 
 }
 
-
 echo_usage () {
 
   cat <<-EOM
@@ -99,7 +95,6 @@ EOM
 exit 0
 }
 
-
 get_password () {
 
   # Prompt for user password with character echo
@@ -115,12 +110,10 @@ get_password () {
 
 }
 
-
 main () {
   parse_args $*
   host_list=$(cat $hosts_file | tr '\n' ' ')
   do_nagios_request $*
 }
-
 
 main $*
