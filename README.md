@@ -1,6 +1,6 @@
 # nagiosalertctl
 
-Script to disable/enable Nagios checks and notifications via http
+Script to disable/enable Nagios checks and notifications via http.
 
 ## Why?
 
